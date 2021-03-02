@@ -3,3 +3,11 @@
 ################################################################################
 
 /.vs
+/Debug
+/petools/Debug
+/petools/Release
+/petools/x64
+/petools/petools.vcxproj.filters
+/petools/petools.vcxproj.user
+/Release
+/x64
