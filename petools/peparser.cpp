@@ -1,6 +1,7 @@
 #include "peparser.h"
 
-peparser::peparser(const std::tstring _szPePath)
+peparser::peparser(const std::tstring _szPePath) :
+	ImportTable( this )
 {
 	if (true == _szPePath.empty())
 	{
@@ -33,13 +34,14 @@ peparser::peparser(const std::tstring _szPePath)
 		return;
 	}
 
-	m_pView = MapViewOfFile(m_hFileMap, FILE_MAP_READ, 0, 0, 0);
+	m_pView = (byte *)MapViewOfFile(m_hFileMap, FILE_MAP_READ, 0, 0, 0);
 	if (NULL == m_pView)
 	{
 		return;
 	}
 
 	this->InitPeHeader();
+	this->ParseSectionTable();
 }
 
 peparser::~peparser()
@@ -66,19 +68,14 @@ peparser::~peparser()
 bool peparser::check()
 {
 	//check dos header magic
-	if (m_PeHeader.dos_header.e_magic != DOS_MAGIC_MZ)
-	{
-		return false;
-	}
+	if (m_PeHeader.dos_header.e_magic != DOS_MAGIC_MZ) { return false; }
 
 	//check nt header magic
-	if (m_PeHeader.nt_header.Signature != NT_MAGIC_PE)
-	{
-		return false;
-	}
+	if (m_PeHeader.nt_header.Signature != NT_MAGIC_PE) { return false; }
 	
 	//check nt header is PE32 or PE32+ executable
-	if (m_PeHeader.nt_header.PlatformMagic != NT_OPTIONAL_32PE_MAGIC && m_PeHeader.nt_header.PlatformMagic != NT_OPTIONAL_64PE_MAGIC)
+	if (m_PeHeader.nt_header.PlatformMagic != NT_OPTIONAL_32PE_MAGIC && 
+		m_PeHeader.nt_header.PlatformMagic != NT_OPTIONAL_64PE_MAGIC)
 	{
 		return false;
 	}
@@ -91,43 +88,28 @@ bool peparser::check()
 		return false;
 	}
 
-	//check Platform == machine
+	//check section num
+	if (2> m_PeHeader.nt_header.FileHeader.NumberOfSections || 2 > m_SectionList.size()) { return false; }
+	if (m_PeHeader.nt_header.FileHeader.NumberOfSections != m_SectionList.size()) { return false; }
+
+	//check every Platform
 	if (m_PeHeader.nt_header.PlatformMagic == NT_OPTIONAL_32PE_MAGIC)
 	{
-		if (m_PeHeader.nt_header.OptionalHeader32.Magic != NT_OPTIONAL_32PE_MAGIC)
-		{
-			return false;
-		}
+		if (m_PeHeader.nt_header.OptionalHeader32.Magic != NT_OPTIONAL_32PE_MAGIC) { return false; }
 
-		if (m_PeHeader.nt_header.FileHeader.Machine != NT_FILE_MACHINE_AMD32)
-		{
-			return false;
-		}
+		if (m_PeHeader.nt_header.FileHeader.Machine != NT_FILE_MACHINE_AMD32) { return false; }
 
-		if (false == (m_PeHeader.nt_header.FileHeader.Characteristics & NT_FILE_32BIT_MACHINE))
-		{
-			return false;
-		}
+		if (false == (m_PeHeader.nt_header.FileHeader.Characteristics & NT_FILE_32BIT_MACHINE)) { return false; }
 
-		if (m_PeHeader.nt_header.OptionalHeader32.Win32VersionValue != 0)
-		{
-			return false;
-		}
+		if (m_PeHeader.nt_header.OptionalHeader32.Win32VersionValue != 0) { return false; }
 
-		if (m_PeHeader.nt_header.OptionalHeader32.ImageBase % 0x10000 != 0)
-		{
-			return false;
-		}
+		if (m_PeHeader.nt_header.OptionalHeader32.NumberOfRvaAndSizes != NUM_DIR_ENTRIES) { return false; }
 
-		if (m_PeHeader.nt_header.OptionalHeader32.SectionAlignment < 2)
-		{
-			return false;
-		}
+		if (m_PeHeader.nt_header.OptionalHeader32.ImageBase % 0x10000 != 0) { return false; }
 
-		if (m_PeHeader.nt_header.OptionalHeader32.FileAlignment < 2)
-		{
-			return false;
-		}
+		if (m_PeHeader.nt_header.OptionalHeader32.SectionAlignment < 2) { return false; }
+
+		if (m_PeHeader.nt_header.OptionalHeader32.FileAlignment < 2) { return false; }
 
 		if (m_PeHeader.nt_header.FileHeader.Characteristics & NT_FILE_EXECUTABLE_IMAGE)
 		{
@@ -139,67 +121,44 @@ bool peparser::check()
 			}
 		}
 
-		if (m_PeHeader.nt_header.OptionalHeader32.NumberOfRvaAndSizes != NUM_DIR_ENTRIES)
+		//check size of pe header
+		std::uint32_t nDisFormFistSection = 0;
+		size_t nSectionNum = 0;
+		while (nSectionNum < m_SectionList.size())
 		{
-			return false;
+			if (0 != m_SectionList.at(nSectionNum).RawBegin)
+			{
+				nDisFormFistSection = m_SectionList.at(nSectionNum).RawBegin;
+				break;
+			}
+
+			nSectionNum++;			
 		}
 
-		//check size of peheader
-		std::uint32_t nHeaderSizeNoReg = sizeof(m_PeHeader.dos_header) + 
-			m_PeHeader.nt_header.FileHeader.SizeOfOptionalHeader + 
-			m_PeHeader.nt_header.FileHeader.NumberOfSections * sizeof(image_section_header);
-		
-		std::uint32_t dv = nHeaderSizeNoReg / m_PeHeader.nt_header.OptionalHeader32.FileAlignment;
-		std::uint32_t re = nHeaderSizeNoReg % m_PeHeader.nt_header.OptionalHeader32.FileAlignment;
-		std::uint32_t nHeaderSizeReg = re ? (dv+1) * m_PeHeader.nt_header.OptionalHeader32.FileAlignment : nHeaderSizeNoReg;
-
-		if (m_PeHeader.nt_header.OptionalHeader32.SizeOfHeaders != nHeaderSizeReg)
-		{ 
-			return false;
-		}
+		if (m_PeHeader.nt_header.OptionalHeader32.SizeOfHeaders != nDisFormFistSection) { return false; }
 
 		//check size of image
-		//...
+		if (m_PeHeader.nt_header.OptionalHeader32.SizeOfImage != m_SectionList.at(m_SectionList.size() - 1).RvaEndReg) { return false; }
 
 
 	}
 	else if(m_PeHeader.nt_header.PlatformMagic == NT_OPTIONAL_64PE_MAGIC)
 	{
-		if (m_PeHeader.nt_header.OptionalHeader64.Magic != NT_OPTIONAL_64PE_MAGIC)
-		{
-			return false;
-		}
+		if (m_PeHeader.nt_header.OptionalHeader64.Magic != NT_OPTIONAL_64PE_MAGIC) { return false; }
 
-		if (m_PeHeader.nt_header.FileHeader.Machine != NT_FILE_MACHINE_AMD64)
-		{
-			return false;
-		}
+		if (m_PeHeader.nt_header.FileHeader.Machine != NT_FILE_MACHINE_AMD64) { return false; }
 
-		if (false == (m_PeHeader.nt_header.FileHeader.Characteristics & NT_FILE_LARGE_ADDRESS_AWARE))
-		{
-			return false;
-		}
+		if (false == (m_PeHeader.nt_header.FileHeader.Characteristics & NT_FILE_LARGE_ADDRESS_AWARE)) { return false; }
 
-		if (m_PeHeader.nt_header.OptionalHeader64.Win32VersionValue != 0)
-		{
-			return false;
-		}
+		if (m_PeHeader.nt_header.OptionalHeader64.Win32VersionValue != 0) { return false; }
 
-		if (m_PeHeader.nt_header.OptionalHeader64.ImageBase % 0x10000 != 0)
-		{
-			return false;
-		}
+		if (m_PeHeader.nt_header.OptionalHeader64.NumberOfRvaAndSizes != NUM_DIR_ENTRIES) { return false; }
 
-		if (m_PeHeader.nt_header.OptionalHeader64.SectionAlignment < 2)
-		{
-			return false;
-		}
+		if (m_PeHeader.nt_header.OptionalHeader64.ImageBase % 0x10000 != 0) { return false; }
 
-		if (m_PeHeader.nt_header.OptionalHeader64.FileAlignment < 2)
-		{
-			return false;
-		}
+		if (m_PeHeader.nt_header.OptionalHeader64.SectionAlignment < 2) { return false; }
 
+		if (m_PeHeader.nt_header.OptionalHeader64.FileAlignment < 2) { return false; }
 
 		if (m_PeHeader.nt_header.FileHeader.Characteristics & NT_FILE_EXECUTABLE_IMAGE)
 		{
@@ -211,80 +170,157 @@ bool peparser::check()
 			}
 		}
 
-		if (m_PeHeader.nt_header.OptionalHeader64.NumberOfRvaAndSizes != NUM_DIR_ENTRIES)
+		
+		//check size of pe header
+		std::uint32_t nDisFormFistSection = 0;
+		size_t nSectionNum = 0;
+		while (nSectionNum < m_SectionList.size())
 		{
-			return false;
+			if (0 != m_SectionList.at(nSectionNum).RawBegin)
+			{
+				nDisFormFistSection = m_SectionList.at(nSectionNum).RawBegin;
+				break;
+			}
+
+			nSectionNum++;
 		}
 
-		//check size of peheader
-		std::uint32_t nHeaderSizeNoReg = sizeof(m_PeHeader.dos_header) +
-			m_PeHeader.nt_header.FileHeader.SizeOfOptionalHeader +
-			m_PeHeader.nt_header.FileHeader.NumberOfSections * sizeof(image_section_header);
-
-		std::uint32_t dv = nHeaderSizeNoReg / m_PeHeader.nt_header.OptionalHeader64.FileAlignment;
-		std::uint32_t re = nHeaderSizeNoReg % m_PeHeader.nt_header.OptionalHeader64.FileAlignment;
-		std::uint32_t nHeaderSizeReg = re ? (dv + 1) * m_PeHeader.nt_header.OptionalHeader64.FileAlignment : nHeaderSizeNoReg;
-
-		if (m_PeHeader.nt_header.OptionalHeader64.SizeOfHeaders != nHeaderSizeReg)
-		{
-			return false;
-		}
+		if (m_PeHeader.nt_header.OptionalHeader64.SizeOfHeaders != nDisFormFistSection) { return false; }
 
 		//check size of image
-		//...
-
-
+		if (m_PeHeader.nt_header.OptionalHeader64.SizeOfImage != m_SectionList.at(m_SectionList.size() - 1).RvaEndReg) { return false; }
 
 	}
-	
 
+
+	
+	
+	
+	m_IsValid = true;
 	return true;
 }
 
-bool peparser::Is64Bit()
+bool peparser::is64bit()
 {
 	return m_PeHeader.nt_header.PlatformMagic == NT_FILE_MACHINE_AMD64;
 }
 
-bool peparser::InitPeHeader()
+void peparser::InitPeHeader()
 {
 	if (NULL == m_pView || 0 == m_FileSize)
 	{
-		return false;
+		return;
 	}
+
+	ZeroMemory(&m_PeHeader, sizeof(m_PeHeader));
 
 	size_t nParseBeg = 0;
 	size_t nParseEnd = 0;
 
-	if ((nParseEnd += sizeof(dos_header)) >= m_FileSize) { return false; }
+	if ((nParseEnd += sizeof(dos_header)) >= m_FileSize) { return; }
 
-	memcpy(&m_PeHeader.dos_header, (byte *)m_pView + nParseBeg, nParseEnd - nParseBeg);
+	memcpy(&m_PeHeader.dos_header, m_pView + nParseBeg, nParseEnd - nParseBeg);
 	
 	nParseBeg = m_PeHeader.dos_header.e_lfanew;
 	nParseEnd = m_PeHeader.dos_header.e_lfanew;
-	if ((nParseEnd += sizeof(m_PeHeader.nt_header.Signature) + sizeof(m_PeHeader.nt_header.FileHeader)) >= m_FileSize) { return false; }
+	if ((nParseEnd += sizeof(m_PeHeader.nt_header.Signature) + sizeof(m_PeHeader.nt_header.FileHeader)) >= m_FileSize) { return; }
 
 
-	memcpy(&m_PeHeader.nt_header, (byte *)m_pView + nParseBeg, nParseEnd - nParseBeg);
+	memcpy(&m_PeHeader.nt_header, m_pView + nParseBeg, nParseEnd - nParseBeg);
 
-	if (nParseEnd + sizeof(std::uint16_t) >= m_FileSize) { return false; }
+	if (nParseEnd + sizeof(std::uint16_t) >= m_FileSize) { return; }
 
 	nParseBeg = nParseEnd;
-	if (*(std::uint16_t *)((byte *)m_pView + nParseEnd) == NT_OPTIONAL_32PE_MAGIC)
+	if (*(std::uint16_t *)(m_pView + nParseEnd) == NT_OPTIONAL_32PE_MAGIC)
 	{
 		m_PeHeader.nt_header.PlatformMagic = NT_OPTIONAL_32PE_MAGIC;
-		if ((nParseEnd += sizeof(m_PeHeader.nt_header.OptionalHeader32)) >= m_FileSize) { return false; }
-		memcpy(&m_PeHeader.nt_header.OptionalHeader32, (byte *)m_pView + nParseBeg, nParseEnd - nParseBeg);
+		if ((nParseEnd += sizeof(m_PeHeader.nt_header.OptionalHeader32)) >= m_FileSize) { return; }
+		memcpy(&m_PeHeader.nt_header.OptionalHeader32, m_pView + nParseBeg, nParseEnd - nParseBeg);
 
 	}
-	else if(*(std::uint16_t*)((byte*)m_pView + nParseEnd) == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
+	else if(*(std::uint16_t*)(m_pView + nParseEnd) == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
 	{
 		m_PeHeader.nt_header.PlatformMagic = IMAGE_NT_OPTIONAL_HDR64_MAGIC;
-		if ((nParseEnd += sizeof(m_PeHeader.nt_header.OptionalHeader64)) >= m_FileSize) { return false; }
-		memcpy(&m_PeHeader.nt_header.OptionalHeader64, (byte*)m_pView + nParseBeg, nParseEnd - nParseBeg);
+		if ((nParseEnd += sizeof(m_PeHeader.nt_header.OptionalHeader64)) >= m_FileSize) { return; }
+		memcpy(&m_PeHeader.nt_header.OptionalHeader64, m_pView + nParseBeg, nParseEnd - nParseBeg);
 
 	}
 	
 
-	return true;
+	return;
+}
+
+void peparser::ParseSectionTable()
+{
+	m_SectionList.clear();
+
+	std::uint32_t nFileAlignment = 0;
+	std::uint32_t nRvaAlignment = 0;
+
+	if (m_PeHeader.nt_header.PlatformMagic == NT_OPTIONAL_32PE_MAGIC)
+	{
+		nFileAlignment = m_PeHeader.nt_header.OptionalHeader32.FileAlignment;
+		nRvaAlignment = m_PeHeader.nt_header.OptionalHeader32.SectionAlignment;
+	}
+	else if (m_PeHeader.nt_header.PlatformMagic == NT_OPTIONAL_64PE_MAGIC)
+	{
+		nFileAlignment = m_PeHeader.nt_header.OptionalHeader64.FileAlignment;
+		nRvaAlignment = m_PeHeader.nt_header.OptionalHeader64.SectionAlignment;
+	}
+	else
+	{
+		return;
+	}
+
+	size_t nParseBeg = 0;
+	size_t nParseEnd = 0;
+	
+	nParseBeg = m_PeHeader.dos_header.e_lfanew + 
+		sizeof(m_PeHeader.nt_header.Signature) + 
+		sizeof(m_PeHeader.nt_header.FileHeader) +
+		m_PeHeader.nt_header.FileHeader.SizeOfOptionalHeader;
+	
+	if (nParseBeg >= m_FileSize) { return; }
+
+	std::uint16_t nSectionNum = m_PeHeader.nt_header.FileHeader.NumberOfSections;
+	while (nSectionNum--)
+	{
+		nParseEnd = nParseBeg + sizeof(image_section_header);
+		if (nParseEnd > m_FileSize) { break; }
+
+		image_section_header* pSectionHeader = (image_section_header*)(m_pView + nParseBeg);
+		nParseBeg = nParseEnd;
+
+		std::uint32_t nRawBegin = pSectionHeader->PointerToRawData;
+		std::uint32_t nRawEnd = nRawBegin + pSectionHeader->SizeOfRawData;
+		std::uint32_t nRawEndReg = nRawEnd % nFileAlignment ? (nRawEnd ? nRawEnd / nFileAlignment + 1 : 0) * nFileAlignment : nRawEnd;
+
+		std::uint32_t nRvaBegin = pSectionHeader->VirtualAddress;
+		std::uint32_t nRvaEnd = nRvaBegin + pSectionHeader->Misc.VirtualSize;
+		std::uint32_t nRvaEndReg = nRvaEnd % nRvaAlignment ? (nRvaEnd ? nRvaEnd / nRvaAlignment + 1 : 0) * nRvaAlignment : nRvaEnd;
+
+#ifdef _UNICODE
+		const wchar_t* szUnicodeSectionName = ConvertAnsiToUnicode(string((char*)pSectionHeader->Name, 8).c_str());
+		const wstring szSectionName = szUnicodeSectionName;
+		delete[] szUnicodeSectionName;
+#else
+		const string szSectionName((char*)pSectionHeader->Name, 8);
+#endif
+
+		SECTIONELE section;
+		section.SectionName = szSectionName;
+		section.RawBegin = nRawBegin;
+		section.RawEnd = nRawEnd;
+		section.RawEndReg = nRawEndReg;
+		section.RvaBegin = nRvaBegin;
+		section.RvaEnd = nRvaEnd;
+		section.RvaEndReg = nRvaEndReg;
+		section.Characteristics = pSectionHeader->Characteristics;
+
+		m_SectionList.push_back(section);
+
+	}
+
+
+	return;
 }

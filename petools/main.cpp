@@ -14,9 +14,10 @@ int _tmain(int argc, tchar* argv[], tchar* envp[])
 	try
 	{
 
-		//peparser parser(_T(R"(D:\workstation\injectdll.dll)"));
+		peparser parser(_T(R"(D:\workstation\injectdll.dll)"));
 		//peparser parser(_T(R"(D:\workstation\debugtest_x64.exe)"));
-		peparser parser(_T(R"(D:\workstation\debugtest\Release\debugtest.upack.exe)"));
+		//peparser parser(_T(R"(D:\workstation\petools.exe)"));
+		//peparser parser(_T(R"(D:\workstation\debugtest\Release\debugtest.upack.exe)"));
 
 		if (parser.check())
 		{

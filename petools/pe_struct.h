@@ -23,7 +23,6 @@ constexpr std::uint16_t NT_OPTIONAL_SUBSYSTEM_NATIVE = 0x01;		//drivers
 constexpr std::uint16_t NT_OPTIONAL_SUBSYSTEM_WINDOWS_GUI = 0x02;	//gui
 constexpr std::uint16_t NT_OPTIONAL_SUBSYSTEM_WINDOWS_CUI = 0x03;	//cui
 
-
 typedef struct
 {
 	std::uint16_t e_magic;
@@ -170,3 +169,13 @@ typedef struct
 	std::uint16_t NumberOfLinenumbers;
 	std::uint32_t Characteristics;
 }image_section_header, *pimage_section_header;
+
+
+typedef struct
+{
+	std::uint32_t LookupTableRVA;
+	std::uint32_t TimeStamp;
+	std::uint32_t ForwarderChain;
+	std::uint32_t NameRVA;
+	std::uint32_t FirstThunkRVA;
+}import_dir_entry, *pimport_dir_entry;
