@@ -34,7 +34,7 @@ static void MyOutputDebugMsgW(const wchar_t* szOutputFormat, ...)
 {
 	va_list vlArgs = NULL;
 	va_start(vlArgs, szOutputFormat);
-	size_t nLen = _vscwprintf(szOutputFormat, vlArgs) + 1;
+	size_t nLen = (size_t)_vscwprintf(szOutputFormat, vlArgs) + 1;
 	wchar_t* szBuffer = new wchar_t[nLen];
 	if (NULL != szBuffer)
 	{
@@ -49,7 +49,7 @@ static void MyOutputDebugMsgA(const char* szOutputFormat, ...)
 {
 	va_list vlArgs = NULL;
 	va_start(vlArgs, szOutputFormat);
-	size_t nLen = _vscprintf(szOutputFormat, vlArgs) + 1;
+	size_t nLen = (size_t)_vscprintf(szOutputFormat, vlArgs) + 1;
 	char* szBuffer = new char[nLen];
 	if (NULL != szBuffer)
 	{
@@ -64,7 +64,7 @@ static void MyDbgMessageBoxW(const wchar_t* szOutputFormat, ...)
 {
 	va_list vlArgs = NULL;
 	va_start(vlArgs, szOutputFormat);
-	size_t nLen = _vscwprintf(szOutputFormat, vlArgs) + 1;
+	size_t nLen = (size_t)_vscwprintf(szOutputFormat, vlArgs) + 1;
 	wchar_t* szBuffer = new wchar_t[nLen];
 	if (NULL != szBuffer)
 	{
@@ -79,7 +79,7 @@ static void MyDbgMessageBoxA(const char* szOutputFormat, ...)
 {
 	va_list vlArgs = NULL;
 	va_start(vlArgs, szOutputFormat);
-	size_t nLen = _vscprintf(szOutputFormat, vlArgs) + 1;
+	size_t nLen = (size_t)_vscprintf(szOutputFormat, vlArgs) + 1;
 	char* szBuffer = new char[nLen];
 	if (NULL != szBuffer)
 	{
@@ -89,17 +89,25 @@ static void MyDbgMessageBoxA(const char* szOutputFormat, ...)
 	}
 	va_end(vlArgs);
 }
+
 static void BinPrint(const void* bBinaryData, unsigned int iSize)
 {
+
+#ifdef _WIN64
+#define POINTLEN "16"
+#else
+#define POINTLEN "8"
+#endif
+
 	unsigned int LINEBYTEMAX = 16;
 	const byte* bCurrentBinary = (const byte*)bBinaryData;
 
-	MyOutputDebugMsg(TEXT("[==================================Binary data on 0x%016x total %u bytes==================================]\n"), bBinaryData, iSize);
+	MyOutputDebugMsg(TEXT("[==================================Binary data on 0x%0") TEXT(POINTLEN) TEXT("x total %u bytes==================================]\n"), bBinaryData, iSize);
 
 	do
 	{
 		unsigned int iThisLineOutNum = LINEBYTEMAX > iSize ? iSize : LINEBYTEMAX;
-		MyOutputDebugMsg(TEXT("0x%016x  "), bCurrentBinary);
+		MyOutputDebugMsg(TEXT("0x%0") TEXT(POINTLEN) TEXT("x  "), bCurrentBinary);
 
 		for (unsigned int index = 0; index < LINEBYTEMAX; ++index)
 		{
@@ -126,5 +134,3 @@ static void BinPrint(const void* bBinaryData, unsigned int iSize)
 		bCurrentBinary += iThisLineOutNum;
 	} while (iSize > LINEBYTEMAX ? iSize -= LINEBYTEMAX : 0);
 }
-
-

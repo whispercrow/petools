@@ -151,9 +151,12 @@
     <ClInclude Include="convert_code.h" />
     <ClInclude Include="dbgfunction.h" />
     <ClInclude Include="exception_seh.h" />
+    <ClInclude Include="peparser.h" />
+    <ClInclude Include="pe_struct.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="peparser.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

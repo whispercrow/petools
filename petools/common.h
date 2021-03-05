@@ -8,6 +8,8 @@
 #include <iostream>
 #include <iomanip>
 #include <vector>
+#include "dbgfunction.h"
+#include "exception_seh.h"
 
 using namespace std;
 
