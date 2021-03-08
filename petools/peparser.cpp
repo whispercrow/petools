@@ -324,3 +324,35 @@ void peparser::ParseSectionTable()
 
 	return;
 }
+
+std::uint32_t peparser::RvaToRaw(std::uint32_t _Rva)
+{
+	std::uint32_t nRaw = -1;
+
+	for (auto iterSection : m_SectionList)
+	{
+		if (_Rva >= iterSection.RvaBegin && _Rva <= iterSection.RvaEnd)
+		{
+			nRaw = iterSection.RawBegin + _Rva - iterSection.RvaBegin;
+			break;
+		}
+	}
+
+	return nRaw;
+}
+
+std::uint32_t peparser::RawToTva(std::uint32_t _Raw)
+{
+	std::uint32_t nRva = -1;
+
+	for (auto iterSection : m_SectionList)
+	{
+		if (_Raw >= iterSection.RawBegin && _Raw <= iterSection.RawEnd)
+		{
+			nRva = iterSection.RvaBegin + _Raw - iterSection.RawBegin;
+			break;
+		}
+	}
+
+	return nRva;
+}
