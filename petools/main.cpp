@@ -13,20 +13,38 @@ int _tmain(int argc, tchar* argv[], tchar* envp[])
 	
 	try
 	{
-
-		peparser parser(_T(R"(D:\workstation\injectdll.dll)"));
-		//peparser parser(_T(R"(D:\workstation\debugtest_x64.exe)"));
-		//peparser parser(_T(R"(D:\workstation\petools.exe)"));
-		//peparser parser(_T(R"(D:\workstation\debugtest\Release\debugtest.upack.exe)"));
+		//tstring szPath = _T(R"(D:\workstation\asm\Debug\asm.exe)");
+		//tstring szPath = _T(R"(C:\Users\whisp\OneDrive\tools\x64dbg\release\x64\libeay32.dll)");
+		tstring szPath = _T(R"(d:\Xshell-7.0.0054p.exe)");
+		peparser parser(szPath);
 
 		if (parser.check())
 		{
-			cout << "success" << endl;
+			tcout << szPath << endl;
+			tcout << _T("check success!") << endl;
+			vector<IMPORTELE> importtable;
+			parser.ImportTable.GetImportTable(&importtable);
+			for (auto dll : importtable)
+			{
+				tcout << dll.PeName << endl;
+				for (auto fun : dll.FunctionInfo)
+				{
+					tcout << _T("            ");
+					tcout << std::hex << setw(8) << setfill(_T('0'))<< fun.second << _T("  ") << fun.first << endl;
+				}
+			}
+
+
+
+
 		}
 		else
 		{
-			cout << "failed" << endl;
+			cout << "check failed!" << endl;
 		}
+
+
+		
 
 	}
 	catch (const seh_excpetion& seh_error)

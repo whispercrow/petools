@@ -42,6 +42,7 @@ peparser::peparser(const std::tstring _szPePath) :
 
 	this->InitPeHeader();
 	this->ParseSectionTable();
+	ImportTable.init();
 }
 
 peparser::~peparser()
@@ -128,7 +129,15 @@ bool peparser::check()
 		{
 			if (0 != m_SectionList.at(nSectionNum).RawBegin)
 			{
-				nDisFormFistSection = m_SectionList.at(nSectionNum).RawBegin;
+				if (0 != m_SectionList.at(nSectionNum).RawEnd - m_SectionList.at(nSectionNum).RawBegin)
+				{
+					nDisFormFistSection = m_SectionList.at(nSectionNum).RawBegin;
+				}
+				else
+				{
+					nDisFormFistSection = m_SectionList.at(nSectionNum).RvaBegin;
+				}
+
 				break;
 			}
 
@@ -178,7 +187,15 @@ bool peparser::check()
 		{
 			if (0 != m_SectionList.at(nSectionNum).RawBegin)
 			{
-				nDisFormFistSection = m_SectionList.at(nSectionNum).RawBegin;
+				if (0 != m_SectionList.at(nSectionNum).RawEnd - m_SectionList.at(nSectionNum).RawBegin)
+				{
+					nDisFormFistSection = m_SectionList.at(nSectionNum).RawBegin;
+				}
+				else
+				{
+					nDisFormFistSection = m_SectionList.at(nSectionNum).RvaBegin;
+				}
+
 				break;
 			}
 
@@ -202,7 +219,7 @@ bool peparser::check()
 
 bool peparser::is64bit()
 {
-	return m_PeHeader.nt_header.PlatformMagic == NT_FILE_MACHINE_AMD64;
+	return m_PeHeader.nt_header.PlatformMagic == NT_OPTIONAL_64PE_MAGIC;
 }
 
 void peparser::InitPeHeader()
@@ -238,9 +255,9 @@ void peparser::InitPeHeader()
 		memcpy(&m_PeHeader.nt_header.OptionalHeader32, m_pView + nParseBeg, nParseEnd - nParseBeg);
 
 	}
-	else if(*(std::uint16_t*)(m_pView + nParseEnd) == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
+	else if(*(std::uint16_t*)(m_pView + nParseEnd) == NT_OPTIONAL_64PE_MAGIC)
 	{
-		m_PeHeader.nt_header.PlatformMagic = IMAGE_NT_OPTIONAL_HDR64_MAGIC;
+		m_PeHeader.nt_header.PlatformMagic = NT_OPTIONAL_64PE_MAGIC;
 		if ((nParseEnd += sizeof(m_PeHeader.nt_header.OptionalHeader64)) >= m_FileSize) { return; }
 		memcpy(&m_PeHeader.nt_header.OptionalHeader64, m_pView + nParseBeg, nParseEnd - nParseBeg);
 
@@ -341,7 +358,7 @@ std::uint32_t peparser::RvaToRaw(std::uint32_t _Rva)
 	return nRaw;
 }
 
-std::uint32_t peparser::RawToTva(std::uint32_t _Raw)
+std::uint32_t peparser::RawToRva(std::uint32_t _Raw)
 {
 	std::uint32_t nRva = -1;
 

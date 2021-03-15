@@ -5,10 +5,8 @@
 typedef struct
 {
 	tstring PeName;
-	std::uint32_t TimeStamp;
-	vector<tstring> FunctionName;
+	vector<std::pair<tstring, std::uint32_t>> FunctionInfo;
 }IMPORTELE, *PIMPORTELE;
-
 
 
 class peparser;
@@ -18,13 +16,15 @@ public:
 	explicit importtab(peparser* _pparser);
 	virtual ~importtab();
 
-	bool GetImportTable(vector<IMPORTELE> *_mTableOuter);
+	bool init();
+
+	void GetImportTable(vector<IMPORTELE> *_mTableOuter);
 	
 
 
 private:
-	peparser* m_pParser = NULL;
-	import_dir_entry* m_pImportTabRaw = NULL;
+	peparser* m_pParser = nullptr;
+	import_dir_entry* m_pImportTabRaw = nullptr;
 
 };
 

@@ -35,7 +35,7 @@ private:
 	void InitPeHeader();
 	void ParseSectionTable();
 	std::uint32_t RvaToRaw(std::uint32_t _Rva);
-	std::uint32_t RawToTva(std::uint32_t _Raw);
+	std::uint32_t RawToRva(std::uint32_t _Raw);
 
 
 	HANDLE m_hFile = INVALID_HANDLE_VALUE;

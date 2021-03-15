@@ -173,9 +173,15 @@ typedef struct
 
 typedef struct
 {
-	std::uint32_t LookupTableRVA;
+	std::uint32_t OriginalFirstThunk;
 	std::uint32_t TimeStamp;
 	std::uint32_t ForwarderChain;
 	std::uint32_t NameRVA;
 	std::uint32_t FirstThunkRVA;
 }import_dir_entry, *pimport_dir_entry;
+
+typedef struct
+{
+	std::uint16_t hint;
+	std::uint8_t Name;
+}import_function_by_name, *pimport_function_by_name;

@@ -8,8 +8,10 @@
 #include <iostream>
 #include <iomanip>
 #include <vector>
+#include <algorithm>
 #include "dbgfunction.h"
 #include "exception_seh.h"
+#include "convert_code.h"
 
 using namespace std;
 
