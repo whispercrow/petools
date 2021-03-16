@@ -185,3 +185,20 @@ typedef struct
 	std::uint16_t hint;
 	std::uint8_t Name;
 }import_function_by_name, *pimport_function_by_name;
+
+
+typedef struct
+{
+	std::uint32_t characteristics;
+	std::uint32_t timedatastamp;
+	std::uint16_t majorversion;
+	std::uint16_t minorversion;
+	std::uint32_t name;
+	std::uint32_t base;
+	std::uint32_t numberoffunctions;
+	std::uint32_t numberofnames;
+	std::uint32_t addressoffunctions;
+	std::uint32_t addressofnames;
+	std::uint32_t addressofnameofdinals;
+}export_dir_entry, *pexport_dir_entry;
+

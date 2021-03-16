@@ -151,11 +151,13 @@
     <ClInclude Include="convert_code.h" />
     <ClInclude Include="dbgfunction.h" />
     <ClInclude Include="exception_seh.h" />
+    <ClInclude Include="exporttab.h" />
     <ClInclude Include="importtab.h" />
     <ClInclude Include="peparser.h" />
     <ClInclude Include="pe_struct.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="exporttab.cpp" />
     <ClCompile Include="importtab.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="peparser.cpp" />

@@ -1,7 +1,8 @@
 #include "peparser.h"
 
 peparser::peparser(const std::tstring _szPePath) :
-	ImportTable( this )
+	ImportTable(this),
+	ExportTable(this)
 {
 	if (true == _szPePath.empty())
 	{
@@ -21,8 +22,8 @@ peparser::peparser(const std::tstring _szPePath) :
 	}
 
 	m_FileSize = ((std::uint64_t)stfileInfo.nFileSizeHigh << 32) + stfileInfo.nFileSizeLow;
-	
-	m_hFile = CreateFile(_szPePath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,NULL);
+
+	m_hFile = CreateFile(_szPePath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (INVALID_HANDLE_VALUE == m_hFile)
 	{
 		return;
@@ -34,7 +35,7 @@ peparser::peparser(const std::tstring _szPePath) :
 		return;
 	}
 
-	m_pView = (byte *)MapViewOfFile(m_hFileMap, FILE_MAP_READ, 0, 0, 0);
+	m_pView = (byte*)MapViewOfFile(m_hFileMap, FILE_MAP_READ, 0, 0, 0);
 	if (NULL == m_pView)
 	{
 		return;
@@ -43,6 +44,7 @@ peparser::peparser(const std::tstring _szPePath) :
 	this->InitPeHeader();
 	this->ParseSectionTable();
 	ImportTable.init();
+	ExportTable.init();
 }
 
 peparser::~peparser()
@@ -147,7 +149,7 @@ bool peparser::check()
 		if (m_PeHeader.nt_header.OptionalHeader32.SizeOfHeaders != nDisFormFistSection) { return false; }
 
 		//check size of image
-		if (m_PeHeader.nt_header.OptionalHeader32.SizeOfImage != m_SectionList.at(m_SectionList.size() - 1).RvaEndReg) { return false; }
+		//if (m_PeHeader.nt_header.OptionalHeader32.SizeOfImage != m_SectionList.at(m_SectionList.size() - 1).RvaEndReg) { return false; }
 
 
 	}
@@ -205,7 +207,7 @@ bool peparser::check()
 		if (m_PeHeader.nt_header.OptionalHeader64.SizeOfHeaders != nDisFormFistSection) { return false; }
 
 		//check size of image
-		if (m_PeHeader.nt_header.OptionalHeader64.SizeOfImage != m_SectionList.at(m_SectionList.size() - 1).RvaEndReg) { return false; }
+		//if (m_PeHeader.nt_header.OptionalHeader64.SizeOfImage != m_SectionList.at(m_SectionList.size() - 1).RvaEndReg) { return false; }
 
 	}
 

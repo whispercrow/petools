@@ -2,6 +2,7 @@
 #include "common.h"
 #include "pe_struct.h"
 #include "importtab.h"
+#include "exporttab.h"
 
 typedef struct
 {
@@ -18,6 +19,7 @@ typedef struct
 class peparser
 {
 	friend class importtab;
+	friend class exporttab;
 
 public:
 	explicit peparser(const std::tstring _szPePath);
@@ -28,7 +30,7 @@ public:
 
 
 	importtab ImportTable;
-
+	exporttab ExportTable;
 	
 
 private:

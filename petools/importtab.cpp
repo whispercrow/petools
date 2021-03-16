@@ -35,10 +35,12 @@ bool importtab::init()
 	}
 
 	size_t nImportTableRaw = m_pParser->RvaToRaw(pImportTable->VirtualAddress);
-	if (-1 != nImportTableRaw || m_pParser->m_FileSize <= nImportTableRaw)
+	if (-1 == nImportTableRaw || m_pParser->m_FileSize <= nImportTableRaw)
 	{
-		m_pImportTabRaw = (import_dir_entry*)(m_pParser->m_pView + nImportTableRaw);
+		return false;
 	}
+
+	m_pImportTabRaw = (import_dir_entry*)(m_pParser->m_pView + nImportTableRaw);
 
 	return true;
 }
@@ -98,7 +100,7 @@ void importtab::GetImportTable(vector<IMPORTELE>* _mTableOuter)
 					*(std::uint64_t *)ThunkIter & 0x7fffffffffffffff :
 					*ThunkIter & 0x7fffffff;
 				tostringstream ostr;
-				ostr << _T("@fun_index_") << FunctionIndex;
+				ostr << _T("@function_SN_") << FunctionIndex;
 				szFunctionName = ostr.str();
 			}
 			else
